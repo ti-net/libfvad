@@ -62,10 +62,10 @@ static bool process_sf(SNDFILE *infile, Fvad *vad,
         prev = vadres;
     }
 
-    printf("voice detected in %ld of %ld frames (%.2f%%)\n",
-        frames[1], frames[0] + frames[1],
+    printf("%.2f\nvoice detected in %ld of %ld frames\n",
         frames[0] + frames[1] ?
-            100.0 * ((double)frames[1] / (frames[0] + frames[1])) : 0.0);
+            100.0 * ((double)frames[1] / (frames[0] + frames[1])) : 0.0,
+        frames[1], frames[0] + frames[1]);
     printf("%ld voice segments, average length %.2f frames\n",
         segments[1], segments[1] ? (double)frames[1] / segments[1] : 0.0);
     printf("%ld non-voice segments, average length %.2f frames\n",
