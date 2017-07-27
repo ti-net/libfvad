@@ -83,7 +83,7 @@ int fvad_set_sample_rate(Fvad* inst, int sample_rate);
  *                        0 - (non-active Voice),
  *                       -1 - (invalid frame length).
  */
-int fvad_process(Fvad* inst, const int16_t* frame, size_t length);
+int fvad_process(Fvad* inst, const int16_t* frame, size_t length, int16_t* power);
 
 
 #endif  // FVAD_H_

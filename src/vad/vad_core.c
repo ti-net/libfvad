@@ -603,7 +603,7 @@ int WebRtcVad_set_mode_core(VadInstT* self, int mode) {
 // probability for both speech and background noise.
 
 int WebRtcVad_CalcVad48khz(VadInstT* inst, const int16_t* speech_frame,
-                           size_t frame_length) {
+                           size_t frame_length, int16_t* power) {
   int vad;
   size_t i;
   int16_t speech_nb[240];  // 30 ms in 8 kHz.
@@ -622,13 +622,13 @@ int WebRtcVad_CalcVad48khz(VadInstT* inst, const int16_t* speech_frame,
   }
 
   // Do VAD on an 8 kHz signal
-  vad = WebRtcVad_CalcVad8khz(inst, speech_nb, frame_length / 6);
+  vad = WebRtcVad_CalcVad8khz(inst, speech_nb, frame_length / 6, power);
 
   return vad;
 }
 
 int WebRtcVad_CalcVad32khz(VadInstT* inst, const int16_t* speech_frame,
-                           size_t frame_length)
+                           size_t frame_length, int16_t* power)
 {
     size_t len;
     int vad;
@@ -645,13 +645,13 @@ int WebRtcVad_CalcVad32khz(VadInstT* inst, const int16_t* speech_frame,
     len /= 2;
 
     // Do VAD on an 8 kHz signal
-    vad = WebRtcVad_CalcVad8khz(inst, speechNB, len);
+    vad = WebRtcVad_CalcVad8khz(inst, speechNB, len, power);
 
     return vad;
 }
 
 int WebRtcVad_CalcVad16khz(VadInstT* inst, const int16_t* speech_frame,
-                           size_t frame_length)
+                           size_t frame_length, int16_t* power)
 {
     size_t len;
     int vad;
@@ -662,19 +662,21 @@ int WebRtcVad_CalcVad16khz(VadInstT* inst, const int16_t* speech_frame,
                            frame_length);
 
     len = frame_length / 2;
-    vad = WebRtcVad_CalcVad8khz(inst, speechNB, len);
+    vad = WebRtcVad_CalcVad8khz(inst, speechNB, len, power);
 
     return vad;
 }
 
 int WebRtcVad_CalcVad8khz(VadInstT* inst, const int16_t* speech_frame,
-                          size_t frame_length)
+                          size_t frame_length, int16_t* power)
 {
     int16_t feature_vector[kNumChannels], total_power;
 
     // Get power in the bands
     total_power = WebRtcVad_CalculateFeatures(inst, speech_frame, frame_length,
                                               feature_vector);
+    // liucl add 2017-07-26
+    *power = total_power; 
 
     // Make a VAD
     inst->vad = GmmProbability(inst, feature_vector, total_power, frame_length);

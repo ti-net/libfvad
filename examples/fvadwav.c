@@ -10,7 +10,7 @@
 
  #define _POSIX_C_SOURCE 200809L
 
-#include <fvad.h>
+#include "../include/fvad.h"
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
@@ -24,7 +24,12 @@ static bool process_sf(SNDFILE *infile, Fvad *vad,
     bool success = false;
     double *buf0 = NULL;
     int16_t *buf1 = NULL;
+    int16_t power=0;
     int vadres, prev = -1;
+    int count = 0;
+    int count1 = 1;
+    int gvadres = 0;
+    int sum_power = 0;
     long frames[2] = {0, 0};
     long segments[2] = {0, 0};
 
@@ -41,7 +46,7 @@ static bool process_sf(SNDFILE *infile, Fvad *vad,
         for (size_t i = 0; i < framelen; i++)
             buf1[i] = buf0[i] * INT16_MAX;
 
-        vadres = fvad_process(vad, buf1, framelen);
+        vadres = fvad_process(vad, buf1, framelen, &power);
         if (vadres < 0) {
             fprintf(stderr, "VAD processing failed\n");
             goto end;
@@ -58,20 +63,48 @@ static bool process_sf(SNDFILE *infile, Fvad *vad,
         }
 
         frames[vadres]++;
-        if (prev != vadres) segments[vadres]++;
+        if (prev != vadres) {
+            segments[vadres]++;
+            if (vadres == 1) {
+                if(segments[1] == 1) printf("%ld-", 10 * (frames[0]+frames[1]));
+                else printf(",%ld-", 10 * (frames[0]+frames[1]));
+            } else {
+                if (count != 0) {
+                    printf("%ld-%d", 10 * (frames[0]+frames[1]), sum_power); 
+                }
+                sum_power = 0;
+                count1 = 1;
+            }
+        }
+        if(prev == vadres){
+            if(vadres == 1) {
+                if(count1 == 1) {
+                    sum_power = power;
+                } else {
+                    if(power > sum_power)
+                        sum_power = power;
+                }
+                count1++;
+	    }
+        }
         prev = vadres;
+        count++;
+        gvadres = vadres;
     }
+    if ((count == frames[0]+frames[1]) && (1 == gvadres)) printf("%ld-%d", 10 * (frames[0]+frames[1]), sum_power);
 
-    printf("%.2f\n", frames[0] + frames[1] ?
+    printf(";%.2f\n", frames[0] + frames[1] ?
             100.0 * ((double)frames[1] / (frames[0] + frames[1])) : 0.0);
-    //printf("voice detected in %ld of %ld frames (%.2f%%)\n",
-    //    frames[1], frames[0] + frames[1],
-    //    frames[0] + frames[1] ?
-    //        100.0 * ((double)frames[1] / (frames[0] + frames[1])) : 0.0);
-    //printf("%ld voice segments, average length %.2f frames\n",
-    //    segments[1], segments[1] ? (double)frames[1] / segments[1] : 0.0);
-    //printf("%ld non-voice segments, average length %.2f frames\n",
-    //    segments[0], segments[0] ? (double)frames[0] / segments[0] : 0.0);
+    
+//    printf("frame len:%ld -- count:%d\n", framelen, count); 
+//    printf("voice detected in %ld of %ld frames (%.2f%%)\n",
+//        frames[1], frames[0] + frames[1],
+//        frames[0] + frames[1] ?
+//            100.0 * ((double)frames[1] / (frames[0] + frames[1])) : 0.0);
+//    printf("%ld voice segments, average length %.2f frames\n",
+//        segments[1], segments[1] ? (double)frames[1] / segments[1] : 0.0);
+//    printf("%ld non-voice segments, average length %.2f frames\n",
+//        segments[0], segments[0] ? (double)frames[0] / segments[0] : 0.0);
 
     success = true;
 
