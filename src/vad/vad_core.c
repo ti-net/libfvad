@@ -668,15 +668,12 @@ int WebRtcVad_CalcVad16khz(VadInstT* inst, const int16_t* speech_frame,
 }
 
 int WebRtcVad_CalcVad8khz(VadInstT* inst, const int16_t* speech_frame,
-                          size_t frame_length, int16_t* power)
+                          size_t frame_length, int16_t* max_power)
 {
     int16_t feature_vector[kNumChannels], total_power;
-
     // Get power in the bands
     total_power = WebRtcVad_CalculateFeatures(inst, speech_frame, frame_length,
-                                              feature_vector);
-    // liucl add 2017-07-26
-    *power = total_power; 
+                                              feature_vector, max_power);
 
     // Make a VAD
     inst->vad = GmmProbability(inst, feature_vector, total_power, frame_length);

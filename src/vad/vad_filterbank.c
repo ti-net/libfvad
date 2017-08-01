@@ -238,7 +238,7 @@ static void LogOfEnergy(const int16_t* data_in, size_t data_length,
 }
 
 int16_t WebRtcVad_CalculateFeatures(VadInstT* self, const int16_t* data_in,
-                                    size_t data_length, int16_t* features) {
+                                    size_t data_length, int16_t* features, int16_t* max_power) {
   int16_t total_energy = 0;
   // We expect |data_length| to be 80, 160 or 240 samples, which corresponds to
   // 10, 20 or 30 ms in 8 kHz. Therefore, the intermediate downsampled data will
@@ -258,6 +258,16 @@ int16_t WebRtcVad_CalculateFeatures(VadInstT* self, const int16_t* data_in,
 
   RTC_DCHECK_LE(data_length, 240);
   RTC_DCHECK_LT(4, kNumChannels - 1);  // Checking maximum |frequency_band|.
+
+  int16_t temp_max = 0;
+  int16_t* temp_ptr = data_in;
+  for(int i=0; i < data_length; i++){
+    if(abs(*temp_ptr) > temp_max){
+      temp_max = abs(*temp_ptr);                                          
+    }
+    temp_ptr++;
+  }
+  *max_power = temp_max;
 
   // Split at 2000 Hz and downsample.
   SplitFilter(in_ptr, data_length, &self->upper_state[frequency_band],

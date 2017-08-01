@@ -103,12 +103,12 @@ int WebRtcVad_set_mode_core(VadInstT* self, int mode);
  *                        1-6 - Active speech
  */
 int WebRtcVad_CalcVad48khz(VadInstT* inst, const int16_t* speech_frame,
-                           size_t frame_length, int16_t* power);
+                           size_t frame_length, int16_t* max_power);
 int WebRtcVad_CalcVad32khz(VadInstT* inst, const int16_t* speech_frame,
-                           size_t frame_length, int16_t* power);
+                           size_t frame_length, int16_t* max_power);
 int WebRtcVad_CalcVad16khz(VadInstT* inst, const int16_t* speech_frame,
-                           size_t frame_length, int16_t* power);
+                           size_t frame_length, int16_t* max_power);
 int WebRtcVad_CalcVad8khz(VadInstT* inst, const int16_t* speech_frame,
-                          size_t frame_length, int16_t* power);
+                          size_t frame_length, int16_t* max_power);
 
 #endif  // WEBRTC_COMMON_AUDIO_VAD_VAD_CORE_H_

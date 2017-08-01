@@ -61,7 +61,7 @@ static bool process_sf(SNDFILE *infile, Fvad *vad,
         if (outfiles[vadres]) {
             sf_write_double(outfiles[!!vadres], buf0, framelen);
         }
-
+        
         frames[vadres]++;
         if (prev != vadres) {
             segments[vadres]++;
@@ -70,20 +70,18 @@ static bool process_sf(SNDFILE *infile, Fvad *vad,
                 else printf(",%ld-", 10 * (frames[0]+frames[1]));
             } else {
                 if (count != 0) {
-                    printf("%ld-%d", 10 * (frames[0]+frames[1]), sum_power); 
+                    printf("%ld-%d", 10 * (frames[0]+frames[1]), sum_power/count1); 
                 }
                 sum_power = 0;
                 count1 = 1;
+                if(segments[1] >= 1000){
+                    break;
+                }
             }
         }
         if(prev == vadres){
             if(vadres == 1) {
-                if(count1 == 1) {
-                    sum_power = power;
-                } else {
-                    if(power > sum_power)
-                        sum_power = power;
-                }
+                sum_power += power;
                 count1++;
 	    }
         }
@@ -91,7 +89,7 @@ static bool process_sf(SNDFILE *infile, Fvad *vad,
         count++;
         gvadres = vadres;
     }
-    if ((count == frames[0]+frames[1]) && (1 == gvadres)) printf("%ld-%d", 10 * (frames[0]+frames[1]), sum_power);
+    if ((count == frames[0]+frames[1]) && (1 == gvadres)) printf("%ld-%d", 10 * (frames[0]+frames[1]), sum_power/count1);
 
     printf(";%.2f\n", frames[0] + frames[1] ?
             100.0 * ((double)frames[1] / (frames[0] + frames[1])) : 0.0);
