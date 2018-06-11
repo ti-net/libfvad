@@ -19,7 +19,7 @@
 #include <sndfile.h>
 
 static bool process_sf(SNDFILE *infile, Fvad *vad,
-    size_t framelen, SNDFILE *outfiles[2], FILE *listfile)
+    size_t framelen, SNDFILE *outfiles[2], FILE *listfile, int pad)
 {
     bool success = false;
     double *buf0 = NULL;
@@ -32,6 +32,7 @@ static bool process_sf(SNDFILE *infile, Fvad *vad,
     int sum_power = 0;
     long frames[2] = {0, 0};
     long segments[2] = {0, 0};
+    double zero = 0;
 
     if (framelen > SIZE_MAX / sizeof (double)
             || !(buf0 = malloc(framelen * sizeof *buf0))
@@ -71,6 +72,9 @@ static bool process_sf(SNDFILE *infile, Fvad *vad,
             } else {
                 if (count != 0) {
                     printf("%ld-%d", 10 * (frames[0]+frames[1]), sum_power/count1); 
+                    for (size_t i=0; i < 8*pad; i++){
+                        sf_write_double(outfiles[1], &zero, 1);
+                    }
                 }
                 sum_power = 0;
                 count1 = 1;
@@ -139,6 +143,7 @@ int main(int argc, char *argv[])
     SF_INFO in_info = {0}, out_info[2];
     FILE *list_file = NULL;
     int mode, frame_ms = 10;
+    int pad = 0;
     Fvad *vad = NULL;
 
     /*
@@ -153,7 +158,7 @@ int main(int argc, char *argv[])
     /*
      * parse arguments
      */
-    for (int ch; (ch = getopt(argc, argv, "m:f:o:n:l:h")) != -1;) {
+    for (int ch; (ch = getopt(argc, argv, "m:f:o:n:l:p:h")) != -1;) {
         switch (ch) {
         case 'm':
             if (!parse_int(&mode, optarg, 0, 3) || fvad_set_mode(vad, mode) < 0) {
@@ -176,6 +181,12 @@ int main(int argc, char *argv[])
         case 'l':
             list_fname = optarg;
             break;
+	case 'p':
+            if (!parse_int(&pad, optarg, 200, 2000)) {
+                fprintf(stderr, "invalid pad length '%s'\n", optarg);
+                goto argfail;
+            }
+            break;
         case 'h':
             printf(
                 "Usage: %s [OPTION]... FILE\n"
@@ -186,7 +197,8 @@ int main(int argc, char *argv[])
                 "  -o FILE      write detected voice frames to FILE in wav format\n"
                 "  -n FILE      write detected non-voice frames to FILE in wav format\n"
                 "  -l FILE      write list of per-frame detection results to FILE\n"
-                "  -h           display this help and exit\n",
+                "  -p PAD	set PAD length for each voice segment\n"
+		"  -h           display this help and exit\n",
                 argv[0]);
             goto success;
 
@@ -255,7 +267,7 @@ int main(int argc, char *argv[])
      * run main loop
      */
     if (!process_sf(in_sf, vad,
-            (size_t)in_info.samplerate / 1000 * frame_ms, out_sf, list_file))
+            (size_t)in_info.samplerate / 1000 * frame_ms, out_sf, list_file, pad))
         goto fail;
 
     /*
