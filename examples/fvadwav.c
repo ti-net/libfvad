@@ -19,7 +19,7 @@
 #include <sndfile.h>
 
 static bool process_sf(SNDFILE *infile, Fvad *vad,
-    size_t framelen, SNDFILE *outfiles[2], FILE *listfile, int pad)
+    size_t framelen, SNDFILE *outfiles[2], FILE *listfile, int pad, int frame_ms)
 {
     bool success = false;
     double *buf0 = NULL;
@@ -32,7 +32,11 @@ static bool process_sf(SNDFILE *infile, Fvad *vad,
     int sum_power = 0;
     long frames[2] = {0, 0};
     long segments[2] = {0, 0};
+    long last_frame = 0;
+    long last_pad = 0;
     double zero = 0;
+
+    size_t read_framelen;
 
     if (framelen > SIZE_MAX / sizeof (double)
             || !(buf0 = malloc(framelen * sizeof *buf0))
@@ -41,8 +45,8 @@ static bool process_sf(SNDFILE *infile, Fvad *vad,
         goto end;
     }
 
-    while (sf_read_double(infile, buf0, framelen) == framelen) {
-
+    while ((read_framelen=sf_read_double(infile, buf0, framelen)) == framelen) {
+//	printf("read framelen=%ld\n", read_framelen);
         // Convert the read samples to int16
         for (size_t i = 0; i < framelen; i++)
             buf1[i] = buf0[i] * INT16_MAX;
@@ -59,23 +63,27 @@ static bool process_sf(SNDFILE *infile, Fvad *vad,
 
         vadres = !!vadres; // make sure it is 0 or 1
 
-        if (outfiles[vadres]) {
-            sf_write_double(outfiles[!!vadres], buf0, framelen);
-        }
-        
         frames[vadres]++;
         if (prev != vadres) {
             segments[vadres]++;
             if (vadres == 1) {
-                if(segments[1] == 1) printf("%ld-", 10 * (frames[0]+frames[1]));
-                else printf(",%ld-", 10 * (frames[0]+frames[1]));
+                if(segments[1] == 1){
+			printf("%ld-%ld-", 0L, frame_ms * (frames[0]+frames[1]));
+		}else {
+                    last_pad = frame_ms * (frames[0]+frames[1]) - last_frame;
+		    if(last_pad > pad){
+                        last_pad = pad;
+                    }
+                    for (size_t i=0; i < 8*last_pad; i++){
+		        sf_write_double(outfiles[1], &zero, 1);
+                    }
+		    printf(",%ld-%ld-", last_pad, frame_ms * (frames[0]+frames[1]));
+		}
             } else {
                 if (count != 0) {
-                    printf("%ld-%d", 10 * (frames[0]+frames[1]), sum_power/count1); 
-                    for (size_t i=0; i < 8*pad; i++){
-                        sf_write_double(outfiles[1], &zero, 1);
-                    }
-                }
+                    last_frame = frame_ms * (frames[0]+frames[1]);
+                    printf("%ld-%d", last_frame, sum_power/count1); 
+		}
                 sum_power = 0;
                 count1 = 1;
                 if(segments[1] >= 1000){
@@ -89,12 +97,17 @@ static bool process_sf(SNDFILE *infile, Fvad *vad,
                 count1++;
 	    }
         }
+//	printf("segment=%d count=%d\n", vadres, count);
+        if (outfiles[vadres]) {
+            sf_write_double(outfiles[!!vadres], buf0, framelen);
+        }
+
         prev = vadres;
         count++;
         gvadres = vadres;
     }
-    if ((count == frames[0]+frames[1]) && (1 == gvadres)) printf("%ld-%d", 10 * (frames[0]+frames[1]), sum_power/count1);
-
+    if ((count == frames[0]+frames[1]) && (1 == gvadres)) printf("%ld-%d", frame_ms * (frames[0]+frames[1]), sum_power/count1);
+//    printf("segment[1] count=%ld last framelen=%d\n", segments[1], read_framelen);
     printf(";%.2f\n", frames[0] + frames[1] ?
             100.0 * ((double)frames[1] / (frames[0] + frames[1])) : 0.0);
     
@@ -267,7 +280,7 @@ int main(int argc, char *argv[])
      * run main loop
      */
     if (!process_sf(in_sf, vad,
-            (size_t)in_info.samplerate / 1000 * frame_ms, out_sf, list_file, pad))
+            (size_t)in_info.samplerate / 1000 * frame_ms, out_sf, list_file, pad, frame_ms))
         goto fail;
 
     /*
