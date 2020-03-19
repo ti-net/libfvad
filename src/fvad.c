@@ -18,7 +18,7 @@
 static const int valid_rates[] = { 8, 16, 32, 48 };
 
 // VAD process functions for each valid sample rate
-static int (*const process_funcs[])(VadInstT*, const int16_t*, size_t, int16_t*) = {
+static int (*const process_funcs[])(VadInstT*, const int16_t*, size_t, int16_t*, int16_t*) = {
     WebRtcVad_CalcVad8khz,
     WebRtcVad_CalcVad16khz,
     WebRtcVad_CalcVad32khz,
@@ -93,13 +93,13 @@ static bool valid_length(int rate_idx, size_t length)
 }
 
 
-int fvad_process(Fvad* inst, const int16_t* frame, size_t length, int16_t* power)
+int fvad_process(Fvad* inst, const int16_t* frame, size_t length, int16_t* max_power, int16_t* total_power)
 {
     assert(inst);
     if (!valid_length(inst->rate_idx, length))
         return -1;
 
-    int rv = process_funcs[inst->rate_idx](&inst->core, frame, length, power);
+    int rv = process_funcs[inst->rate_idx](&inst->core, frame, length, max_power, total_power);
     assert (rv >= 0);
     if (rv > 0) rv = 1;
 

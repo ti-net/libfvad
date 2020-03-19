@@ -113,7 +113,8 @@ static int32_t WeightedAverage(int16_t* data, int16_t offset,
 // violation, so that our old code can continue to do what it's always been
 // doing.)
 static inline int32_t OverflowingMulS16ByS32ToS32(int16_t a, int32_t b)
-    RTC_NO_SANITIZE("signed-integer-overflow") {
+//    RTC_NO_SANITIZE("signed-integer-overflow") {
+{
   return a * b;
 }
 
@@ -603,7 +604,7 @@ int WebRtcVad_set_mode_core(VadInstT* self, int mode) {
 // probability for both speech and background noise.
 
 int WebRtcVad_CalcVad48khz(VadInstT* inst, const int16_t* speech_frame,
-                           size_t frame_length, int16_t* power) {
+                           size_t frame_length, int16_t* max_power, int16_t* total_power) {
   int vad;
   size_t i;
   int16_t speech_nb[240];  // 30 ms in 8 kHz.
@@ -622,13 +623,13 @@ int WebRtcVad_CalcVad48khz(VadInstT* inst, const int16_t* speech_frame,
   }
 
   // Do VAD on an 8 kHz signal
-  vad = WebRtcVad_CalcVad8khz(inst, speech_nb, frame_length / 6, power);
+  vad = WebRtcVad_CalcVad8khz(inst, speech_nb, frame_length / 6, max_power, total_power);
 
   return vad;
 }
 
 int WebRtcVad_CalcVad32khz(VadInstT* inst, const int16_t* speech_frame,
-                           size_t frame_length, int16_t* power)
+                           size_t frame_length, int16_t* max_power, int16_t* total_power)
 {
     size_t len;
     int vad;
@@ -645,13 +646,13 @@ int WebRtcVad_CalcVad32khz(VadInstT* inst, const int16_t* speech_frame,
     len /= 2;
 
     // Do VAD on an 8 kHz signal
-    vad = WebRtcVad_CalcVad8khz(inst, speechNB, len, power);
+    vad = WebRtcVad_CalcVad8khz(inst, speechNB, len, max_power, total_power);
 
     return vad;
 }
 
 int WebRtcVad_CalcVad16khz(VadInstT* inst, const int16_t* speech_frame,
-                           size_t frame_length, int16_t* power)
+                           size_t frame_length, int16_t* max_power, int16_t* total_power)
 {
     size_t len;
     int vad;
@@ -662,21 +663,22 @@ int WebRtcVad_CalcVad16khz(VadInstT* inst, const int16_t* speech_frame,
                            frame_length);
 
     len = frame_length / 2;
-    vad = WebRtcVad_CalcVad8khz(inst, speechNB, len, power);
+    vad = WebRtcVad_CalcVad8khz(inst, speechNB, len, max_power, total_power);
 
     return vad;
 }
 
 int WebRtcVad_CalcVad8khz(VadInstT* inst, const int16_t* speech_frame,
-                          size_t frame_length, int16_t* max_power)
+                          size_t frame_length, int16_t* max_power, int16_t* total_power)
 {
-    int16_t feature_vector[kNumChannels], total_power;
+    int16_t feature_vector[kNumChannels], this_total_power;
     // Get power in the bands
-    total_power = WebRtcVad_CalculateFeatures(inst, speech_frame, frame_length,
+    this_total_power = WebRtcVad_CalculateFeatures(inst, speech_frame, frame_length,
                                               feature_vector, max_power);
 
     // Make a VAD
-    inst->vad = GmmProbability(inst, feature_vector, total_power, frame_length);
+    inst->vad = GmmProbability(inst, feature_vector, this_total_power, frame_length);
+    *total_power = this_total_power;
 
     return inst->vad;
 }

@@ -24,7 +24,8 @@ static bool process_sf(SNDFILE *infile, Fvad *vad,
     bool success = false;
     double *buf0 = NULL;
     int16_t *buf1 = NULL;
-    int16_t power=0;
+    int16_t max_power=0;
+    int16_t total_power=0;
     int vadres, prev = -1;
     int count = 0;
     int count1 = 1;
@@ -51,7 +52,7 @@ static bool process_sf(SNDFILE *infile, Fvad *vad,
         for (size_t i = 0; i < framelen; i++)
             buf1[i] = buf0[i] * INT16_MAX;
 
-        vadres = fvad_process(vad, buf1, framelen, &power);
+        vadres = fvad_process(vad, buf1, framelen, &max_power, &total_power);
         if (vadres < 0) {
             fprintf(stderr, "VAD processing failed\n");
             goto end;
@@ -93,7 +94,7 @@ static bool process_sf(SNDFILE *infile, Fvad *vad,
         }
         if(prev == vadres){
             if(vadres == 1) {
-                sum_power += power;
+                sum_power += max_power;
                 count1++;
 	    }
         }
